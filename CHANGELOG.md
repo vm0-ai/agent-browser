@@ -6,9 +6,16 @@
 
 - The daemon now ships a **default idle timeout of 1 hour**: after an hour with no commands or dashboard input it saves configured restore state, closes the browser, and exits, so integrations that die without calling `close` no longer leak the daemon and its Chrome tree indefinitely. Sessions without `--restore` or another restore key discard transient browser state and open tabs when they shut down. Set `AGENT_BROWSER_IDLE_TIMEOUT_MS=0` to restore the old always-persist behavior, or any other value to tune it. Dashboard mouse, keyboard, and touch input reset the timer. The default never closes headed browsers, including Safari and iOS WebDriver sessions, or user-attached browsers that may be in direct human use. Provider-owned cloud browsers remain eligible for cleanup, and an explicitly configured timeout applies to all browsers, as before.
 
-## 0.33.0
+## 0.33.0-vm0.1
 
 <!-- release:start -->
+### Bug Fixes
+
+- Changed the Rust HTTP and WebSocket clients to trust native system roots, allowing CDP connections through enterprise proxies with an installed private CA.
+<!-- release:end -->
+
+## 0.33.0
+
 ### New Features
 
 - Added **axe-core accessibility audits** with `agent-browser a11y [url]`, WCAG tag filtering, selector scoping, iframe-aware text and JSON results, an embedded offline and CSP-safe audit engine, and a matching MCP tool (#1596)
@@ -16,7 +23,6 @@
 ### Contributors
 
 - @ctate
-<!-- release:end -->
 
 ## 0.32.4
 

@@ -43,31 +43,36 @@ jobs:
           echo "Sandbox package version: $SANDBOX_VERSION"
           echo "Eve package version: $EVE_VERSION"
 
-          NPM_VERSION=$(npm view agent-browser version 2>/dev/null || echo "0.0.0")
-          SANDBOX_NPM_VERSION=$(npm view @agent-browser/sandbox version 2>/dev/null || echo "0.0.0")
-          EVE_NPM_VERSION=$(npm view @agent-browser/eve version 2>/dev/null || echo "0.0.0")
+          if [ "$GITHUB_REPOSITORY" = "vercel-labs/agent-browser" ]; then
+            NPM_VERSION=$(npm view agent-browser version 2>/dev/null || echo "0.0.0")
+            SANDBOX_NPM_VERSION=$(npm view @agent-browser/sandbox version 2>/dev/null || echo "0.0.0")
+            EVE_NPM_VERSION=$(npm view @agent-browser/eve version 2>/dev/null || echo "0.0.0")
+          else
+            NPM_VERSION="$LOCAL_VERSION"
+            SANDBOX_NPM_VERSION="$SANDBOX_VERSION"
+            EVE_NPM_VERSION="$EVE_VERSION"
+          fi
           echo "npm version: $NPM_VERSION"
           echo "@agent-browser/sandbox npm version: $SANDBOX_NPM_VERSION"
           echo "@agent-browser/eve npm version: $EVE_NPM_VERSION"
 
-          if [ "$LOCAL_VERSION" != "$NPM_VERSION" ]; then
+          if [ "$GITHUB_REPOSITORY" = "vercel-labs/agent-browser" ] && [ "$LOCAL_VERSION" != "$NPM_VERSION" ]; then
             echo "Version changed: $NPM_VERSION -> $LOCAL_VERSION"
             echo "should_release=true" >> "$GITHUB_OUTPUT"
-            echo "needs_github_release=true" >> "$GITHUB_OUTPUT"
           else
-            echo "Version unchanged on npm, skipping build and publish"
+            echo "Skipping npm publish"
             echo "should_release=false" >> "$GITHUB_OUTPUT"
+          fi
 
-            # Check if GitHub release exists; it may be missing if a prior run
-            # published to npm but failed before creating the release.
-            TAG="v$LOCAL_VERSION"
-            if gh release view "$TAG" &>/dev/null; then
-              echo "GitHub release $TAG exists"
-              echo "needs_github_release=false" >> "$GITHUB_OUTPUT"
-            else
-              echo "GitHub release $TAG is missing, will rebuild and create it"
-              echo "needs_github_release=true" >> "$GITHUB_OUTPUT"
-            fi
+          # Check independently because a prior run may have published to npm
+          # but failed before creating the GitHub release.
+          TAG="v$LOCAL_VERSION"
+          if gh release view "$TAG" &>/dev/null; then
+            echo "GitHub release $TAG exists"
+            echo "needs_github_release=false" >> "$GITHUB_OUTPUT"
+          else
+            echo "GitHub release $TAG is missing, will rebuild and create it"
+            echo "needs_github_release=true" >> "$GITHUB_OUTPUT"
           fi
           if [ "$SANDBOX_VERSION" != "$SANDBOX_NPM_VERSION" ]; then
             echo "Sandbox package version changed: $SANDBOX_NPM_VERSION -> $SANDBOX_VERSION"
@@ -233,7 +238,7 @@ jobs:
   publish:
     name: Publish to npm
     needs: [check-release, build-binaries]
-    if: needs.check-release.outputs.should_release == 'true'
+    if: github.repository == 'vercel-labs/agent-browser' && needs.check-release.outputs.should_release == 'true'
     runs-on: ubuntu-latest
     timeout-minutes: 15
     environment: Release
@@ -312,6 +317,7 @@ jobs:
     needs: [check-release, publish]
     if: >-
       always() &&
+      github.repository == 'vercel-labs/agent-browser' &&
       needs.check-release.outputs.should_publish_sandbox == 'true' &&
       (
         needs.check-release.outputs.should_release != 'true' ||
@@ -352,6 +358,7 @@ jobs:
     needs: [check-release, publish, publish-sandbox]
     if: >-
       always() &&
+      github.repository == 'vercel-labs/agent-browser' &&
       needs.check-release.outputs.should_publish_eve == 'true' &&
       (
         needs.check-release.outputs.should_release != 'true' ||
